@@ -1,10 +1,6 @@
 package com.maratnu;
 
-public class Planet {
-    private String name;
+public class Planet extends Resource{
 
-    public String getName() {
-        return name;
-    }
 }
 

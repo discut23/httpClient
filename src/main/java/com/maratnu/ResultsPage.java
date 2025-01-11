@@ -6,14 +6,14 @@ public class ResultsPage {
     @JsonProperty("next")
     private String nextPageUrl;
     @JsonProperty("results")
-    private Person[] persons;
+    private Resource[] resources;
 
     public String getNextPageUrl() {
         return nextPageUrl;
     }
 
-    public Person[] getPersons() {
-        return persons;
+    public Resource[] getResources() {
+        return resources;
     }
 
 }

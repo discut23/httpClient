@@ -32,14 +32,12 @@ public class httpClient {
             page = GetPage(url);
             countRequests++;
 
-            for (Person person: page.getPersons()) {
+            for (Resource resource: page.getResources()) {
                 planetName = "unknown";
                 
-                // if person doesn't contain homeworld information, just reference to a full person resource
-                if (person.getHomeworld() == null) {
-                    person = GetPerson(person.getUrl());
-                    countRequests++;
-                }
+                // person doesn't contain homeworld information, just a reference to a full person resource
+                Person person = GetPerson(resource.getUrl());
+                countRequests++;
 
                 // accumulate homeworlds db
                 if (person.getHomeworld() != null) {
@@ -120,7 +118,6 @@ public class httpClient {
         if (responseGet == null){
             return null;
         }
-
         return mapper.readValue(responseGet, Person.class);
     }
 }
