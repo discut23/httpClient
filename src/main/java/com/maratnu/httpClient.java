@@ -1,8 +1,5 @@
 package com.maratnu;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URI;
@@ -13,14 +10,17 @@ import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 public class httpClient {
 
     public static void main(String[] args) throws URISyntaxException, IOException, InterruptedException {
         int countPersons = 0;
         int countRequests = 0;
-        String url = "https://swapi.dev/api/people";
+        String url = "https://swapi.tech/api/people";
         ResultsPage page;
-        HttpClient client = HttpClient.newBuilder().build();
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         Map<String,String> homeworlds = new HashMap<>();
@@ -28,21 +28,20 @@ public class httpClient {
         String planetName;
 
         do {
-            // prepare the get request
-            HttpRequest requestGet = HttpRequest.newBuilder()
-                    .uri(new URI(url))
-                    .GET()
-                    .build();
-
             // send the get request
-            HttpResponse<String> responseGet = client.send(requestGet, HttpResponse.BodyHandlers.ofString());
+            page = GetPage(url);
             countRequests++;
-            if (responseGet.statusCode() != HttpURLConnection.HTTP_OK){
-                return;
-            }
-            page = mapper.readValue(responseGet.body(), ResultsPage.class);
+
             for (Person person: page.getPersons()) {
                 planetName = "unknown";
+                
+                // if person doesn't contain homeworld information, just reference to a full person resource
+                if (person.getHomeworld() == null) {
+                    person = GetPerson(person.getUrl());
+                    countRequests++;
+                }
+
+                // accumulate homeworlds db
                 if (person.getHomeworld() != null) {
                     planetName = homeworlds.get(person.getHomeworld());
                     if (planetName == null) {
@@ -63,7 +62,9 @@ public class httpClient {
         System.out.println("persons : " + countPersons + " , requests : " + countRequests);
 
     }
-    private static Planet GetPlanet(String url) throws IOException, InterruptedException, URISyntaxException {
+    
+    // todo - return object of requested type
+    private static String GetResource(String url, String requestType) throws IOException, InterruptedException, URISyntaxException {
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         HttpRequest requestGet = HttpRequest.newBuilder()
@@ -78,6 +79,48 @@ public class httpClient {
         if (responseGet.statusCode() != HttpURLConnection.HTTP_OK){
             return null;
         }
-        return mapper.readValue(responseGet.body(), Planet.class);
+
+        //read JSON like DOM Parser
+        JsonNode rootNode = mapper.readTree(responseGet.body());
+        //JsonNode results = rootNode.path("results");
+        JsonNode result = rootNode.path("result");
+        JsonNode properties = result.path("properties");
+        
+        if (requestType.equals("page")) {
+            return rootNode.toString();
+        }
+        else {
+            return properties.toString();
+        }
+    }
+    private static ResultsPage GetPage(String url) throws IOException, InterruptedException, URISyntaxException {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        String responseGet = GetResource(url,"page");
+        if (responseGet == null){
+            return null;
+        }
+        return mapper.readValue(responseGet, ResultsPage.class);
+    }
+
+    private static Planet GetPlanet(String url) throws IOException, InterruptedException, URISyntaxException {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        String responseGet = GetResource(url,"planet");
+        if (responseGet == null){
+            return null;
+        }
+        return mapper.readValue(responseGet, Planet.class);
+    }
+
+    private static Person GetPerson(String url) throws IOException, InterruptedException, URISyntaxException {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        String responseGet = GetResource(url,"person");
+        if (responseGet == null){
+            return null;
+        }
+
+        return mapper.readValue(responseGet, Person.class);
     }
 }
